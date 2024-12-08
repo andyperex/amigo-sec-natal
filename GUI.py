@@ -12,6 +12,7 @@ from email.mime.multipart import MIMEMultipart
 
 
 # Function to send emails
+# Function to send emails
 def send_email(giver, receiver, wish, giver_email):
     try:
         # Email configuration
@@ -36,7 +37,7 @@ def send_email(giver, receiver, wish, giver_email):
         msg.attach(MIMEText(body, "plain"))
 
         # Sending email
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.mail.yahoo.com", 587)  # Yahoo SMTP server
         server.starttls()
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, giver_email, msg.as_string())
@@ -46,6 +47,7 @@ def send_email(giver, receiver, wish, giver_email):
     except Exception as e:
         print(f"Error sending email to {giver_email}: {e}")
         return False
+
 
 
 # Function to load the background image and convert it to Base64
