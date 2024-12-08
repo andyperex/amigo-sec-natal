@@ -6,6 +6,47 @@ import os
 import json
 from google.oauth2.service_account import Credentials
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
+# Function to send emails
+def send_email(giver, receiver, wish, giver_email):
+    try:
+        # Email configuration
+        sender_email = st.secrets["EMAIL_USER"]
+        sender_password = st.secrets["EMAIL_PASS"]
+
+        # Email content
+        subject = "Amigo Secreto 🎁"
+        body = f"""
+        Olá {giver},
+
+        Você foi sorteado para presentear: {receiver}.
+        Desejo de presente: {wish}.
+
+        Feliz Amigo Secreto!
+        """
+        # MIME setup
+        msg = MIMEMultipart()
+        msg["From"] = sender_email
+        msg["To"] = giver_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
+
+        # Sending email
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, giver_email, msg.as_string())
+        server.quit()
+
+        return True
+    except Exception as e:
+        print(f"Error sending email to {giver_email}: {e}")
+        return False
+
 
 # Function to load the background image and convert it to Base64
 def get_base64_image(image_path):
@@ -29,32 +70,7 @@ page_bg = f"""
     background-attachment: fixed;
 }}
 [data-testid="stSidebar"] {{
-    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent sidebar */
-}}
-
-/* Style input boxes */
-input[type="text"], textarea {{
-    background: white !important;
-    color: black !important;
-    border: 2px solid #cccccc !important;
-    padding: 10px !important;
-    font-size: 16px !important;
-    border-radius: 5px !important;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
-}}
-
-[data-testid="stAppViewContainer"] label {{
-    font-size: 20px !important; /* Adjusted font size */
-    font-weight: 700 !important;
-    color: white !important;
-    line-height: 1.2 !important;
-}}
-
-label {{
-    font-size: 25px !important;
-    font-weight: 800 !important;
-    color: white !important;
-    line-height: 1.2 !important;
+    background-color: rgba(255, 255, 255, 0.8);
 }}
 </style>
 """
@@ -66,9 +82,7 @@ SCOPE = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-# Load credentials from Streamlit secrets
 service_account_info = json.loads(st.secrets["SERVICE_ACCOUNT_KEY"])
-
 credentials = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 
 # Authorize and connect to Google Sheets
@@ -92,7 +106,7 @@ wishes = st.text_area("Desejos", placeholder="Escribe un mensaje o tus ideas de 
 if st.button("Enviar"):
     if name and email and wishes:
         # Add the participant's data to the Google Sheet
-        sheet.append_row([name, email, wishes])
+        sheet.append_row([name, email, wishes, "", "No"])
         st.success(f"Obrigado, {name}! Sua inscrição foi registrada.")
     else:
         st.error("Por favor, preencha todos os campos.")
@@ -101,30 +115,44 @@ if st.button("Enviar"):
 rows = sheet.get_all_records()
 st.subheader("Participantes Registrados")
 for row in rows:
-    st.text(f"🎉 {row['name']} ")
+    st.text(f"🎉 {row['name']}")
 
-# Perform Matching
-if len(rows) >= 6 and st.button("Sortear Amigo Secreto"):
-    # Fetch the names from the sheet
+# Show how many participants are left
+num_participants = len(rows)
+if num_participants < 6:
+    st.warning(f"Ainda faltam {6 - num_participants} participantes para o sorteio.")
+
+# Perform Matching Automatically When 6 Participants Are Registered
+if num_participants == 6:
+    st.success("O número necessário de participantes foi atingido! Realizando o sorteio...")
     nombres = [row["name"] for row in rows]
+    emails = [row["email"] for row in rows]
+    wishes = [row["wishes"] for row in rows]
 
     # Shuffle and match participants
     random.shuffle(nombres)
     matches = {}
     for i in range(len(nombres)):
         giver = nombres[i]
-        receiver = nombres[(i + 1) % len(nombres)]  # Last person gives to the first
+        receiver = nombres[(i + 1) % len(nombres)]
         matches[giver] = receiver
 
-    # Display the matches
-    st.subheader("Resultados do Sorteio")
-    for giver, receiver in matches.items():
-        st.text(f"{giver} 🎁 vai dar um presente para {receiver}")
+    # Send Emails
+    st.subheader("Enviando e-mails...")
+    for i, giver in enumerate(nombres):
+        receiver = matches[giver]
+        wish = wishes[i]
+        giver_email = emails[i]
 
-service_account_key = os.environ.get("SERVICE_ACCOUNT_KEY")
-if not service_account_key:
-    st.error("Service account key is not set. Make sure to configure `.streamlit/secrets.toml` for local testing.")
-    st.stop()
+        # Skip if email already sent
+        if rows[i]["email sent"] == "Yes":
+            st.text(f"E-mail já enviado para {giver}.")
+            continue
 
-service_account_info = json.loads(service_account_key)
-credentials = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
+        # Send email and update sheet
+        if send_email(giver, receiver, wish, giver_email):
+            sheet.update_cell(i + 2, 5, "Yes")  # Update "email sent" column
+            sheet.update_cell(i + 2, 4, receiver)  # Update "receiver" column
+            st.text(f"E-mail enviado com sucesso para {giver}!")
+        else:
+            st.error(f"Erro ao enviar e-mail para {giver}.")
