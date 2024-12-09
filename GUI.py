@@ -27,7 +27,8 @@ def send_email(giver, receiver, wish, giver_email):
         Você foi sorteado para presentear: {receiver}.
         Desejo de presente: {wish}.
 
-        Feliz Amigo Secreto!
+        🎁Feliz Amigo Secreto familia!🎁
+        E vamos Gremio pela sul-americana 2025
         """
         # MIME setup
         msg = MIMEMultipart()
