@@ -22,12 +22,12 @@ def send_email(giver, receiver, wish, giver_email):
         # Email content
         subject = "Amigo Secreto 🎁"
         body = f"""
-        Olá {giver},
+        Olá,
 
         Você foi sorteado para presentear: {receiver}.
         Desejo de presente: {wish}.
 
-        Feliz Amigo Secreto!
+        Feliz Amigo Secreto! 🎉 🎉 🎉🎁🎁🎁
         """
         # MIME setup
         msg = MIMEMultipart()
@@ -95,8 +95,7 @@ SHEET_NAME = "amigoDB"  # Replace with your sheet name
 sheet = client.open(SHEET_NAME).sheet1  # Use the first sheet
 
 # Title and description
-st.title("O melhor AMIGO SECRETO da história mundial")
-st.text("Seja bem-vindo ao melhor amigo secreto.")
+st.title("Sejam bem-vindos ao melhor Amigo secreto da história mundial.")
 st.text("Deixe aqui o seu nome, os 3 desejos e o seu e-mail para saber quem será o seu amigo secreto.")
 
 # Input Form
