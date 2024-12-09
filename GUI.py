@@ -27,7 +27,7 @@ def send_email(giver, receiver, wish, giver_email):
         Você foi sorteado para presentear: {receiver}.
         Desejo de presente: {wish}.
 
-        Feliz Amigo Secreto! 🎉 🎉 🎉🎁🎁🎁
+        Feliz Amigo Secreto!
         """
         # MIME setup
         msg = MIMEMultipart()
@@ -124,6 +124,7 @@ if num_participants < 6:
     st.warning(f"Ainda faltam {6 - num_participants} participantes para o sorteio.")
 
 # Perform Matching Automatically When 6 Participants Are Registered
+# Perform Matching Automatically When 6 Participants Are Registered
 if num_participants == 6:
     st.success("O número necessário de participantes foi atingido! Realizando o sorteio...")
     nombres = [row["name"] for row in rows]
@@ -131,18 +132,24 @@ if num_participants == 6:
     wishes = [row["wishes"] for row in rows]
 
     # Shuffle and match participants
-    random.shuffle(nombres)
+    combined = list(zip(nombres, emails, wishes))  # Combine names, emails, and wishes
+    random.shuffle(combined)  # Shuffle combined list to preserve alignment
+    nombres, emails, wishes = zip(*combined)  # Unzip back into separate lists
+
     matches = {}
     for i in range(len(nombres)):
         giver = nombres[i]
         receiver = nombres[(i + 1) % len(nombres)]
-        matches[giver] = receiver
+        matches[giver] = {
+            "receiver": receiver,
+            "receiver_wish": wishes[(i + 1) % len(wishes)],  # Assign the correct wish
+        }
 
     # Send Emails
     st.subheader("Enviando e-mails...")
     for i, giver in enumerate(nombres):
-        receiver = matches[giver]
-        wish = wishes[i]
+        receiver = matches[giver]["receiver"]
+        receiver_wish = matches[giver]["receiver_wish"]
         giver_email = emails[i]
 
         # Skip if email already sent
@@ -151,9 +158,10 @@ if num_participants == 6:
             continue
 
         # Send email and update sheet
-        if send_email(giver, receiver, wish, giver_email):
+        if send_email(giver, receiver, receiver_wish, giver_email):
             sheet.update_cell(i + 2, 5, "Yes")  # Update "email sent" column
             sheet.update_cell(i + 2, 4, receiver)  # Update "receiver" column
             st.text(f"E-mail enviado com sucesso para {giver}!")
         else:
             st.error(f"Erro ao enviar e-mail para {giver}.")
+
